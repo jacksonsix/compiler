@@ -1,0 +1,27 @@
+<html>
+<head> 
+<script src="compiler.js"> </script>
+<script src="high_language.js"> </script>
+</head>
+<body>
+<div id="stack">
+</div>
+<div id ="command">
+<ul id ="log">
+<li>2</li>
+</ul>
+</div>
+<div id='regs'>
+<ul id='regs'>
+</ul>
+</div>
+<script>
+ var create = create_middle_object();
+ var select = select_middle_object_env();
+ var env =  Object.assign({}, create,select);
+ var obj = env.gen('(define a 3)');
+ compile(obj,'val','next');
+ 
+</script>
+</body>
+</html>
