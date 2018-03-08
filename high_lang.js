@@ -1,7 +1,7 @@
 // high level language
 
 
-function setup_parser(){
+function create_middle_object(){
 var env = {};
 env.read_exp_text = 
     // parser to  instruction object
@@ -234,7 +234,7 @@ env.gen  = function (info){
 
 
 // evaluator
-function setup_eval(){
+function select_middle_object_env(){
 	var env={};
 	env.self_eval00 = function(exp){
 		return  exp.type === 'self';
