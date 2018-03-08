@@ -41,7 +41,7 @@ function compile(exp ,target, linkage){
 			compile_application(exp,target,linkage);
 			break;				
         default:
-            log('Unknown expression !');
+            trace('Unknown expression !');
             break;			
 	}
 }
@@ -87,7 +87,7 @@ function compile_variable(exp ,target, linkage){
 	return end_with_linkage(linkage
 	                            ,make_instruction_sequence(['env']
 								                                             ,[target]
-																			 ,['(assign '+target+' (op lookup_var_env) (const '+exp+') (reg env')))']));
+																			 ,['(assign '+target+' (op lookup_var_env) (const '+exp+') (reg env))']));
 }
 
 function compile_assignment(exp ,target, linkage){
@@ -130,12 +130,12 @@ function compile_if(exp,target,linkage){
  	return preserving(['env','continue']
 					,p_code
 					,append_instruction_sequence(make_instruction_sequence(['val']
-					                                                   ,[]
-					                                                   ,[ '(test (op false?) (reg val))'
-																	      ,'(branch (label f_branch))'
+																												  ,[]
+																												  ,[ '(test (op false?) (reg val))'
+																													  ,'(branch (label f_branch))'])
 					                                                      ,parallel_instruction_sequence(append_instruction_sequence( t_branch,c_code)
 																	                                                      ,append_instruction_sequence(f_branch,a_code))
-																		  ,after_if)));
+																		  ,after_if));
 																		  
 }
 
@@ -178,8 +178,8 @@ function compile_lambda(exp,target,linkage){
 		                end_with_linkage(lambda_linkage
 										  ,make_instruction_sequence(['env']
 																						,[target]
-																						,['(assign target (op make_compiled_proc) (label '+proc_entry'+) (reg env))']))
-		                ,(compile_lambda_body( exp, proc_entry)))
+																						,['(assign target (op make_compiled_proc) (label '+proc_entry+') (reg env))'])
+		                ,(compile_lambda_body( exp, proc_entry))))
 			      ,after_lambda);  
 }
 
@@ -375,9 +375,9 @@ function parallel_instruction_sequence(seq1,seq2){
 // compile_linkage , how code do the next instruction
 function empty_instruction_sequence(){
 	var s ={
-			s.reg_need    = [],
-	       s.reg_modefiy = [],
-	       s.instructions  = []
+		   reg_need    : [],
+	       reg_modefiy : [],
+	       instructions  : []
 	};
 	return s;
 }
@@ -425,5 +425,7 @@ function parallel_instruction_sequence(seq1,seq2){
 }
 
 
-
+function trace(info){
+	console.log(info);
+}
 
