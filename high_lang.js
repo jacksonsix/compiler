@@ -347,8 +347,6 @@ function select_middle_object_env(){
 		var procedure = {};
 		procedure.parameters = paras;
 		procedure.body = body;
-		//procedure.env = env;  // this will create cycle. break it.
-		//procedure.env = JSON.stringify(env);   // stringfy does not work for function
 		var copy = []; // copy each frame
 		for(var i=0;i<env.length;i++){
 			var frame = env[i];
