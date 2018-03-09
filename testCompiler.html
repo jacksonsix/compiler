@@ -18,9 +18,9 @@
 <script>
  var create = create_middle_object();
  var select = select_middle_object_env();
- var env =  Object.assign({}, create,select);
- var obj = env.gen('(define a 3)');
- compile(obj,'val','next');
+ var env_high_middle =  Object.assign({}, create,select);
+ var obj = env_high_middle.gen('(define a 3)');
+ var w = compile(obj,'val','next');
  
 </script>
 </body>
