@@ -9,36 +9,37 @@ function new_label_counter(){
 			count++;
 		}
 }
-//
+// exp is actually middle layer object, gen from create_middle_object
 function compile(exp ,target, linkage){
 	var type = getType(exp);
+	
 	switch(type){
 		case 'self':
-			compile_self(exp,target,linkage);
+			return compile_self(exp,target,linkage);
 			break;
 		case 'quoted':	
-			compile_quoted(exp,target,linkage);
+			return compile_quoted(exp,target,linkage);
 			break;	
 		case 'variable':	
-			compile_variable(exp,target,linkage);
+			return compile_variable(exp,target,linkage);
 			break;	
 		case 'assignment':	
-			compile_assignment(exp,target,linkage);
+			return compile_assignment(exp,target,linkage);
 			break;	
 		case 'definition':	
-			compile_definition(exp,target,linkage);
+			return compile_definition(exp,target,linkage);
 			break;	
 		case 'if_exp':	
-			compile_if(exp,target,linkage);
+			return compile_if(exp,target,linkage);
 			break;	
 		case 'lambda':	
-			compile_lambda(exp,target,linkage);
+			return compile_lambda(exp,target,linkage);
 			break;	
 		case 'begin':	
-			compile_begin(exp,target,linkage);
+			return compile_begin(exp,target,linkage);
 			break;	
 		case 'application':	
-			compile_application(exp,target,linkage);
+			return compile_application(exp,target,linkage);
 			break;				
         default:
             trace('Unknown expression !');
@@ -73,26 +74,27 @@ function compile_self(exp ,target, linkage){
 	return end_with_linkage(linkage
 	                            ,make_instruction_sequence([]
 								                                             ,[target]
-																			 ,['(assign ' + target + '(const ' + exp + '))']));
+																			 ,['(assign ' + target + ' (const ' + exp.value + '))']));
 }
 
 function compile_quoted(exp ,target, linkage){
 	return end_with_linkage(linkage
 	                            ,make_instruction_sequence([]
 								                                             ,[target]
-																			 ,['(assign ' + target + '(const ' + '(quote_text ' + exp+')' + '))']));
+																			 ,['(assign ' + target + ' (const ' + ' (quote_text ' + env_high_middle.quote_text(exp)+')' + '))']));
 }
 
 function compile_variable(exp ,target, linkage){
+	var variable = env_high_middle.define_var(exp);
 	return end_with_linkage(linkage
 	                            ,make_instruction_sequence(['env']
 								                                             ,[target]
-																			 ,['(assign '+target+' (op lookup_var_env) (const '+exp+') (reg env))']));
+																			 ,['(assign '+target+' (op lookup_var_env) (const '+variable+') (reg env))']));
 }
 
 function compile_assignment(exp ,target, linkage){
-	var variable = assign_variable(exp);
-	var get_value_code = compile(assign_value(exp),'val','next');
+	var variable = env_high_middle.assign_variable(exp);
+	var get_value_code = compile(env_high_middle.assign_value(exp),'val','next');
 	
 	return end_with_linkage(linkage
 	                            ,preserving(['env']
@@ -104,8 +106,9 @@ function compile_assignment(exp ,target, linkage){
 }
 
 function compile_definition(exp ,target, linkage){
-	var variable = define_var(exp);
-	var get_value_code = compile(define_value(exp),'val','next');
+	var variable = env_high_middle.define_var(exp).value;
+	var valu = env_high_middle.define_value(exp);
+	var get_value_code = compile(valu,'val','next');
 	
 	return end_with_linkage(linkage
 	                            ,preserving(['env']
@@ -123,9 +126,9 @@ function compile_if(exp,target,linkage){
 	var after_if = make_label('after_if'+label_counter);
 	
 	var conseq_linkage =  linkage ==='next'? after_if :linkage;
-	var p_code = compile(if_pred(exp),'val','next');
-    var c_code = compile(if_conseq(exp),target,conseq_linkage);
-    var a_code = compile(if_alt(exp),target,conseq_linkage);
+	var p_code = compile(env_high_middle.if_pred(exp),'val','next');
+    var c_code = compile(env_high_middle.if_conseq(exp),target,conseq_linkage);
+    var a_code = compile(env_high_middle.if_alt(exp),target,conseq_linkage);
 
  	return preserving(['env','continue']
 					,p_code
@@ -298,15 +301,15 @@ function compile_proc_appl(target,linkage){
 
 // details of how instruction sequences are combined.
 function registers_needed(s){
-	return s.needed;
+	return s.reg_need;
 }
 
 function registers_modified(s){
-	return s.modified;
+	return s.reg_modefiy;
 }
 
 function registers_statements(s){
-	return s.statement;
+	return s.instructions;
 }
 
 function needs_registers(sequence,reg){
@@ -319,12 +322,12 @@ function modifies_registers(sequence,reg){
 
 function append_instruction_sequence(seq1,seq2){
 	function append_2_seq(seq1,seq2){
-		make_instruction_sequence(set_union(registers_needed(seq1), set_dif(registers_needed(seq2), registers_modified(seq1)))
+		return make_instruction_sequence(set_union(registers_needed(seq1), set_dif(registers_needed(seq2), registers_modified(seq1)))
 			                                        ,set_union(registers_modified(seq1), registers_modified(seq2))
-												    , registers_statements(seq1).append(registers_statements(seq2)));
+												    , registers_statements(seq1).concat(registers_statements(seq2)));
 													
 	}
-	append_2_seq(seq1,seq2);
+	return append_2_seq(seq1,seq2);
 }
 
 
@@ -350,12 +353,16 @@ function preserving(reg_set,seq1,seq2){
 		   restores.unshift(restore_inst);
 		}
 	}
-
-	return append_instruction_sequence(
-	              append_instruction_sequence(
-	                  append_instruction_sequence(saves,seq1)
-					  ,restores)
-		          ,seq2);	  
+    if(saves.length > 0){
+		return append_instruction_sequence(
+			  append_instruction_sequence(
+				  append_instruction_sequence(saves,seq1)
+				  ,restores)
+			  ,seq2);	
+	}else{
+		return append_instruction_sequence( seq1 ,seq2);
+	}
+  
 }
 
 // define the data structure of instruction sequenece
@@ -388,7 +395,7 @@ function set_union(s1,s2){
 	}else{
 		var first = s1[0];
 		if(s2.indexOf(first) ==-1){
-			return set_union(s1.slice(1),s2).unshift(first);
+			return set_union(s1.slice(1),s2).concat(first);
 		}else{
 			return set_union(s1.slice(1),s2);
 		}
@@ -402,7 +409,7 @@ function set_dif(s1,s2){
 	}else{
 		var first = s1[0];
 		if(s2.indexOf(first) ==-1){
-			return set_union(s1.slice(1),s2).unshift(first);
+			return set_union(s1.slice(1),s2).concat(first);
 		}else{
 			return set_union(s1.slice(1),s2);
 		}
@@ -414,13 +421,13 @@ function set_dif(s1,s2){
 function tack_on_instruction_sequence(seq, body_seq){
 	return make_instruction_sequence( registers_needed(seq)
 	                                             , registers_modified(seq)
-												 , registers_statements(seq).append(registers_statements(body_seq)));
+												 , registers_statements(seq).concat(registers_statements(body_seq)));
 }
 
 function parallel_instruction_sequence(seq1,seq2){
 	return make_instruction_sequence(set_union(registers_needed(seq1), registers_needed(seq2))
 	                                                      ,set_union(registers_modified(seq1),registers_modified(seq2))
-														  ,registers_statements(seq1).append(registers_statements(seq2)));
+														  ,registers_statements(seq1).concat(registers_statements(seq2)));
 	                                                                      
 }
 
