@@ -6,9 +6,11 @@
 function new_label_counter(){
 		var count = 0;
 		return function(){
-			count++;
+			return count++;
 		}
 }
+var global_label_counter = new_label_counter();
+
 // exp is actually middle layer object, gen from create_middle_object
 function compile(exp ,target, linkage){
 	var type = getType(exp);
@@ -17,19 +19,19 @@ function compile(exp ,target, linkage){
 		case 'self':
 			return compile_self(exp,target,linkage);
 			break;
-		case 'quoted':	
+		case 'quote':	
 			return compile_quoted(exp,target,linkage);
 			break;	
 		case 'variable':	
 			return compile_variable(exp,target,linkage);
 			break;	
-		case 'assignment':	
+		case 'assign':	
 			return compile_assignment(exp,target,linkage);
 			break;	
 		case 'definition':	
 			return compile_definition(exp,target,linkage);
 			break;	
-		case 'if_exp':	
+		case 'if':	
 			return compile_if(exp,target,linkage);
 			break;	
 		case 'lambda':	
@@ -78,22 +80,23 @@ function compile_self(exp ,target, linkage){
 }
 
 function compile_quoted(exp ,target, linkage){
+	var quoted_text = env_high_middle.quote_text(exp);
 	return end_with_linkage(linkage
 	                            ,make_instruction_sequence([]
 								                                             ,[target]
-																			 ,['(assign ' + target + ' (const ' + ' (quote_text ' + env_high_middle.quote_text(exp)+')' + '))']));
+																			 ,['(assign ' + target + ' (const  ' +quoted_text + '))']));
 }
 
 function compile_variable(exp ,target, linkage){
-	var variable = env_high_middle.define_var(exp);
+	//var variable = env_high_middle.define_var(exp);
 	return end_with_linkage(linkage
 	                            ,make_instruction_sequence(['env']
 								                                             ,[target]
-																			 ,['(assign '+target+' (op lookup_var_env) (const '+variable+') (reg env))']));
+																			 ,['(assign '+target+' (op lookup_var_env) (const '+exp.value+') (reg env))']));
 }
 
 function compile_assignment(exp ,target, linkage){
-	var variable = env_high_middle.assign_variable(exp);
+	var variable = env_high_middle.assign_var(exp);
 	var get_value_code = compile(env_high_middle.assign_value(exp),'val','next');
 	
 	return end_with_linkage(linkage
@@ -119,11 +122,17 @@ function compile_definition(exp ,target, linkage){
 																			   '(assign '+target+' (const ok))'])));
 }
 
+function make_label(name){
+	var result =  empty_instruction_sequence();
+	result.instructions.push(name);
+	return result;
+}
+
 function compile_if(exp,target,linkage){
-	var label_counter = new_label_counter()();
-	var t_branch = make_label('true_branch' +label_counter);
-	var f_branch = make_label('false_branch'+label_counter);
-	var after_if = make_label('after_if'+label_counter);
+	var label_counter = global_label_counter();
+	var t_branch = make_label('true_branch_' +label_counter);
+	var f_branch = make_label('false_branch_'+label_counter);
+	var after_if = make_label('after_if_'+label_counter);
 	
 	var conseq_linkage =  linkage ==='next'? after_if :linkage;
 	var p_code = compile(env_high_middle.if_pred(exp),'val','next');
@@ -142,14 +151,19 @@ function compile_if(exp,target,linkage){
 																		  
 }
 
+function compile_begin(exp,target,linkage){
+	var seq = env_high_middle.begin_actions(exp);
+	return compile_sequence(seq,target,linkage);
+}
+
 function compile_sequence(sequence,target,linkage){
 	var code;
-	if(is_last_exp(seq)){
-		code = compile(first_sequence(sequence),target,linkage);
+	if(env_high_middle.is_last_exp(sequence)){
+		code = compile(env_high_middle.first_sequence(sequence),target,linkage);
 	}else{
 		code = preserving(['env','continue']
-		                             ,compile(first_sequence(sequence),target,'next')
-									 ,compile_sequence(rest_sequence(sequence), target,linkage));
+		                             ,compile(env_high_middle.first_sequence(sequence),target,'next')
+									 ,compile_sequence(env_high_middle.rest_sequence(sequence), target,linkage));
 	}
 	return code;
 }
@@ -171,7 +185,7 @@ function get_compiled_proc_env(proc){
 }
 //
 function compile_lambda(exp,target,linkage){
-	var label_counter = new_label_counter()();
+	var label_counter = global_label_counter();
 	var proc_entry = make_label('entry'+label_counter);
 	var after_lambda = make_label('after_lambda'+label_counter);
 	var lambda_linkage = linkage==='next'? after_lambda: linkage;
@@ -198,9 +212,9 @@ function compile_lambda_body(exp, proc_entry){
 }
 
 function compile_application(exp,target,linkage){
-	var proc_code = compile( app_operator(exp), 'proc','next');
-	var oprands_code = app_oprands(exp).map(function(oprand){
-		compile(oprand, 'val','next');
+	var proc_code = compile( env_high_middle.app_operator(exp), 'proc','next');
+	var oprands_code = env_high_middle.app_oprands(exp).map(function(oprand){
+		return compile(oprand, 'val','next');
 	});
 	
 	return preserving( ['env','continue']
@@ -250,15 +264,16 @@ function code_to_get_rest_args(oprands_code){
 
 
 function compile_proc_call(target,linkage){
-	var prim_branch = make_label('prim_branch');
-	var compiled_branch = make_label('compiled_branch');
-	var after_call = make_label('after_call');
+	var label_counter = global_label_counter();
+	var prim_branch = make_label('prim_branch_' +label_counter);
+	var compiled_branch = make_label('compiled_branch_'+label_counter);
+	var after_call = make_label('after_call_'+label_counter);
 	//
 	var compiled_linkage = linkage ==='next'? after_call: linkage;
 	return append_instruction_sequence(make_instruction_sequence(['proc']
 	                                                                                            ,['']
 																								,['(test (op primitive)  (reg proc))'
-																								  ,'(branch (label '+prim_branch+'))'])
+																								  ,'(branch (label '+prim_branch.instructions[0]+'))'])
 	                                               ,parallel_instruction_sequence(append_instruction_sequence(compiled_branch
 												                                                                                                    ,compile_proc_appl(target,compiled_linkage))
 																									,append_instruction_sequence(prim_branch
