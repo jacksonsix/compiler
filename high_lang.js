@@ -1,5 +1,33 @@
 // high level language
-
+function jsmapping(shortName){
+	var longName=shortName;
+	switch(shortName){
+		case '+':
+		longName='add';
+		break;
+		case '-':
+		longName='sub';
+		break;
+		case '*':
+		longName='mul';
+		break;
+		case '%':
+		longName='rem';
+		break;
+		case '<':
+		longName='lessthan';
+		break;
+		case '>':
+		longName='bigthan';
+		break;	
+		case '=':
+		longName='equal';
+		break;			
+		default:
+		break;
+	}
+	return longName;
+}
 
 function create_middle_object(){
 var env = {};
@@ -438,6 +466,7 @@ function select_middle_object_env(){
 	env.true00 = function(val){
 		return val !== false;
 	}
+	
 	
 	return env;
 }
