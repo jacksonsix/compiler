@@ -11,6 +11,11 @@ function new_label_counter(){
 }
 var global_label_counter = new_label_counter();
 
+function trace(info,functionname){
+	console.log(info);
+	console.log(functionname);
+}
+
 // exp is actually middle layer object, gen from create_middle_object
 function compile(exp ,target, linkage){
 	var type = getType(exp);
@@ -189,25 +194,37 @@ function compile_lambda(exp,target,linkage){
 	var proc_entry = make_label('entry'+label_counter);
 	var after_lambda = make_label('after_lambda'+label_counter);
 	var lambda_linkage = linkage==='next'? after_lambda: linkage;
-	
-	return append_instruction_sequence(
-	              tack_on_instruction_sequence(
-		                end_with_linkage(lambda_linkage
-										  ,make_instruction_sequence(['env']
+	var ww = make_instruction_sequence(['env']
 																						,[target]
-																						,['(assign target (op make_compiled_proc) (label '+proc_entry+') (reg env))'])
-		                ,(compile_lambda_body( exp, proc_entry))))
+																						,['(assign target (op make_compiled_proc) (label '+proc_entry.instructions[0]+') (reg env))']);
+	var bb = compile_lambda_body( exp, proc_entry);																					
+	trace(label_counter,'compile_lambda'); trace(proc_entry,'compile_lambda'); trace(after_lambda,'compile_lambda');trace(lambda_linkage,'compile_lambda');
+	trace(ww,'compile_lambda'); trace(bb,'compile_lambda');
+	return append_instruction_sequence(
+	               tack_on_instruction_sequence(end_with_linkage(lambda_linkage
+										                                                       ,ww)
+		                                                           ,bb)
 			      ,after_lambda);  
 }
 
 function compile_lambda_body(exp, proc_entry){
-	var formals = lambda_parameters(exp);
-	return append_instruction_sequence(make_instruction_sequence( ['env','proc','argl']
+	var formals = env_high_middle.lambda_parameters(exp);
+	var serie = '[';
+	for(var i=0;i<formals.length;i++){
+		serie += formals[i].value;
+		serie += ',';
+	} 
+	
+	serie =  serie.substring(0, serie.length - 1) + ']';
+	var com_seq = compile_sequence(env_high_middle.lambda_body(exp), 'val','return');
+	var ss = make_instruction_sequence( ['env','proc','argl']
 	                                                                                            ,['env']
-																								,[proc_entry
+																								,[proc_entry.instructions[0]
 																								  ,'(assign env (op get_compiled_proc_env) (reg proc))'
-																								  ,'(assign env (op extend_env) (const '+formals+') (reg argl) (reg env))'])
-	                                                ,compile_sequence(lambda_body(exp), 'val','return'));
+																								  ,'(assign env (op extend_env) (const '+serie+') (reg argl) (reg env))']);
+	trace(formals,'compile_lambda_body'); trace(com_seq,'compile_lambda_body'); trace(ss,'compile_lambda_body');
+	return append_instruction_sequence(ss
+	                                                ,com_seq);
 	
 }
 
@@ -316,10 +333,12 @@ function compile_proc_appl(target,linkage){
 
 // details of how instruction sequences are combined.
 function registers_needed(s){
+	//trace(s);
 	return s.reg_need;
 }
 
 function registers_modified(s){
+	//trace(s);
 	return s.reg_modefiy;
 }
 
@@ -434,6 +453,7 @@ function set_dif(s1,s2){
 
 
 function tack_on_instruction_sequence(seq, body_seq){
+	trace(seq,'tack_on_instruction_sequence'); trace(body_seq,'tack_on_instruction_sequence');
 	return make_instruction_sequence( registers_needed(seq)
 	                                             , registers_modified(seq)
 												 , registers_statements(seq).concat(registers_statements(body_seq)));
@@ -446,8 +466,4 @@ function parallel_instruction_sequence(seq1,seq2){
 	                                                                      
 }
 
-
-function trace(info){
-	console.log(info);
-}
 
