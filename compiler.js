@@ -375,7 +375,7 @@ function check(reg,seq1,seq2){
 	return false;
 }
 
-function preserving(reg_set,seq1,seq2){
+function preserving_old(reg_set,seq1,seq2){
 	var saves =[];
 	var restores = [];
 	for(var i=0;i< reg_set.length;i++){
@@ -395,6 +395,24 @@ function preserving(reg_set,seq1,seq2){
 			  ,seq2);	
 	}else{
 		return append_instruction_sequence( seq1 ,seq2);
+	}
+  
+}
+
+function preserving(reg_set,seq1,seq2){
+	if(reg_set ==null || reg_set.length==0){
+		return append_instruction_sequence(seq1,seq2);
+	}else{
+		var first = reg_set[0];
+		if( needs_registers(seq2,first) && modifies_registers(seq1,first)){
+			return preserving(reg_set.slice(1)
+			                  ,make_instruction_sequence(set_union([first],needs_registers(seq1))
+							                                                 ,set_dif(modifies_registers(seq1),[first])
+																			 ,['(save '+first+')', registers_statements(seq1),'(restore '+first+')'])
+							  ,seq2);
+		}else{
+			return preserving(reg_set.slice(1), seq1,seq2);
+		}
 	}
   
 }
