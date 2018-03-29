@@ -66,7 +66,7 @@ function compile_linkage(linkage){
 	}else if(linkage ==='next'){
 		result =  empty_instruction_sequence();
 	}else{
-		result = make_instruction_sequence([],[],['(goto (label linkage))']);
+		result = make_instruction_sequence([],[],['(goto (label '+linkage+'))']);
 	}
 	return result;
 }
@@ -201,7 +201,7 @@ function compile_lambda(exp,target,linkage){
 	trace(label_counter,'compile_lambda'); trace(proc_entry,'compile_lambda'); trace(after_lambda,'compile_lambda');trace(lambda_linkage,'compile_lambda');
 	trace(ww,'compile_lambda'); trace(bb,'compile_lambda');
 	return append_instruction_sequence(
-	               tack_on_instruction_sequence(end_with_linkage(lambda_linkage
+	               tack_on_instruction_sequence(end_with_linkage(lambda_linkage.instructions[0]
 										                                                       ,ww)
 		                                                           ,bb)
 			      ,after_lambda);  
