@@ -197,7 +197,7 @@ function compile_lambda(exp,target,linkage){
 	var lambda_linkage = linkage==='next'? after_lambda: linkage;
 	var ww = make_instruction_sequence(['env']
 																						,[target]
-																						,['(assign target (op make_compiled_proc) (label '+proc_entry.instructions[0]+') (reg env))']);
+																						,['(assign '+target+' (op make_compiled_proc) (label '+proc_entry.instructions[0]+') (reg env))']);
 	var bb = compile_lambda_body( exp, proc_entry);																					
 	trace(label_counter,'compile_lambda'); trace(proc_entry,'compile_lambda'); trace(after_lambda,'compile_lambda');trace(lambda_linkage,'compile_lambda');
 	trace(ww,'compile_lambda'); trace(bb,'compile_lambda');
@@ -287,17 +287,17 @@ function compile_proc_call(target,linkage){
 	var compiled_branch = make_label('compiled_branch_'+label_counter);
 	var after_call = make_label('after_call_'+label_counter);
 	//
-	var compiled_linkage = linkage ==='next'? after_call: linkage;
+	var compiled_linkage = linkage ==='next'? after_call.instructions[0]: linkage;
 	return append_instruction_sequence(make_instruction_sequence(['proc']
-	                                                                                            ,['']
+	                                                                                            ,[]
 																								,['(test (op primitive)  (reg proc))'
 																								  ,'(branch (label '+prim_branch.instructions[0]+'))'])
 	                                               ,parallel_instruction_sequence(append_instruction_sequence(compiled_branch
 												                                                                                                    ,compile_proc_appl(target,compiled_linkage))
-																									,append_instruction_sequence(prim_branch
-																									,end_with_linkage(linkage,make_instruction_sequence(['proc','argl']
+																									   ,append_instruction_sequence(prim_branch
+																									   ,end_with_linkage(linkage,make_instruction_sequence(['proc','argl']
 																									                                                                                     ,[target]
-																																														 ,['(assign target (op apply_prim_procedure) (reg proc) (reg argl))']))))
+																																														 ,['(assign '+target+' (op apply_prim_procedure) (reg proc) (reg argl))']))))
 													,after_call);
 }
 
@@ -416,11 +416,15 @@ function preserving(reg_set,seq1,seq2){
 	}else{
 		var first = reg_set[0];
 		if( needs_registers(seq2,first) && modifies_registers(seq1,first)){
+			var all = [];
+			all = all.concat('(save '+first+')');
+			all = all.concat(registers_statements(seq1));
+			all = all.concat('(restore '+first+')');
 			return preserving(reg_set.slice(1)
-			                  ,make_instruction_sequence(set_union([first],registers_needed(seq1))
-							                                                 ,set_dif(registers_modified(seq1),[first])
-																			 ,['(save '+first+')', registers_statements(seq1),'(restore '+first+')'])
-							  ,seq2);
+			                             ,make_instruction_sequence(set_union([first],registers_needed(seq1))
+							                                                              ,set_dif(registers_modified(seq1),[first])
+																			              ,all) 
+							             ,seq2);
 		}else{
 			return preserving(reg_set.slice(1), seq1,seq2);
 		}
