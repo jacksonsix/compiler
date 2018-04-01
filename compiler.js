@@ -139,19 +139,20 @@ function compile_if(exp,target,linkage){
 	var f_branch = make_label('false_branch_'+label_counter);
 	var after_if = make_label('after_if_'+label_counter);
 	
-	var conseq_linkage =  linkage ==='next'? after_if :linkage;
+	var conseq_linkage =  linkage ==='next'? after_if.instructions[0] :linkage;
 	var p_code = compile(env_high_middle.if_pred(exp),'val','next');
     var c_code = compile(env_high_middle.if_conseq(exp),target,conseq_linkage);
     var a_code = compile(env_high_middle.if_alt(exp),target,conseq_linkage);
 
+	var tfcode = parallel_instruction_sequence(append_instruction_sequence( t_branch,c_code)
+																	                                                      ,append_instruction_sequence(f_branch,a_code));
  	return preserving(['env','continue']
 					,p_code
 					,append_instruction_sequence(make_instruction_sequence(['val']
 																												  ,[]
 																												  ,[ '(test (op false?) (reg val))'
-																													  ,'(branch (label f_branch))'])
-					                                                      ,parallel_instruction_sequence(append_instruction_sequence( t_branch,c_code)
-																	                                                      ,append_instruction_sequence(f_branch,a_code))
+																													  ,'(branch (label '+f_branch.instructions[0]+'))'])
+					                                                      ,tfcode
 																		  ,after_if));
 																		  
 }
@@ -354,14 +355,24 @@ function modifies_registers(sequence,reg){
 	return -1 !== registers_modified(sequence).indexOf(reg);
 }
 
-function append_instruction_sequence(seq1,seq2){
+function append_instruction_sequence(...seq){
 	function append_2_seq(seq1,seq2){
+		trace(seq1,'append_2_para1');
+		trace(seq2,'append_2_para2');		
 		return make_instruction_sequence(set_union(registers_needed(seq1), set_dif(registers_needed(seq2), registers_modified(seq1)))
-			                                        ,set_union(registers_modified(seq1), registers_modified(seq2))
-												    , registers_statements(seq1).concat(registers_statements(seq2)));
+			                                                   ,set_union(registers_modified(seq1), registers_modified(seq2))
+												               , registers_statements(seq1).concat(registers_statements(seq2)));
 													
 	}
-	return append_2_seq(seq1,seq2);
+	function append_seq_list(seqs){
+	    if(seqs.length ==1){
+			return seqs[0];
+		}else{
+			return append_2_seq(seqs[0], append_seq_list(seqs.slice(1)));
+		}
+	}
+	trace(seq,'append');
+	return append_seq_list(seq);
 }
 
 
@@ -406,8 +417,8 @@ function preserving(reg_set,seq1,seq2){
 		var first = reg_set[0];
 		if( needs_registers(seq2,first) && modifies_registers(seq1,first)){
 			return preserving(reg_set.slice(1)
-			                  ,make_instruction_sequence(set_union([first],needs_registers(seq1))
-							                                                 ,set_dif(modifies_registers(seq1),[first])
+			                  ,make_instruction_sequence(set_union([first],registers_needed(seq1))
+							                                                 ,set_dif(registers_modified(seq1),[first])
 																			 ,['(save '+first+')', registers_statements(seq1),'(restore '+first+')'])
 							  ,seq2);
 		}else{
@@ -427,9 +438,6 @@ function make_instruction_sequence(reg_need,reg_modefiy,instructions){
 }
 
 // basic operation of make data structure. ->  append  <- 
-function parallel_instruction_sequence(seq1,seq2){
-	
-}
 
 // compile_linkage , how code do the next instruction
 function empty_instruction_sequence(){
@@ -442,9 +450,12 @@ function empty_instruction_sequence(){
 }
 
 function set_union(s1,s2){
-	if(s1 == null || s1.length ==0){
+	if( s1.length ==0){
 		return s2;
-	}else{
+	}else if( s2.length ==0){
+		return s1;
+	}
+	else{
 		var first = s1[0];
 		if(s2.indexOf(first) ==-1){
 			return set_union(s1.slice(1),s2).concat(first);
@@ -456,9 +467,12 @@ function set_union(s1,s2){
 }
 
 function set_dif(s1,s2){
-	if(s1 ==null || s1.length ==0){
+	if(s1.length ==0){
 		return [];
-	}else{
+	}else if(s2.length ==0){
+		return [];
+	}
+	else{
 		var first = s1[0];
 		if(s2.indexOf(first) ==-1){
 			return set_union(s1.slice(1),s2).concat(first);
