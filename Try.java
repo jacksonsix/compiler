@@ -11,8 +11,10 @@ public class Try {
 		//testdeepcopy();
 		//testprimfuncs(global);
 		//testcompundexp(evmachine,global);	
-		testcompundexp2(evmachine,global);	
-		
+		//testcompundexp2(evmachine,global);	
+		//testenv(evmachine,global);
+		//testlambda(evmachine,global);
+		testlambcomp(evmachine,global);
 	}
 	
 	private static void testdeepcopy() throws InstantiationException, IllegalAccessException{
@@ -88,6 +90,47 @@ public class Try {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	private static void testenv(EV evmachine,Env global) throws Exception{
+		// 
+		LispObject lo = new LispObject(new SelfExpression(2),new SelfExpression("23"));
+		global.defineVarible("d", lo);
+		
+		SelfExpression se = new SelfExpression(8);
+		global.setVarible("d", se);
+		
+		List<String> ns = new LinkedList<String>();
+		List<Object> os = new  LinkedList<Object>();
+		ns.add("f");
+		os.add( new Integer(3));
+		Env ext = global.Extend(global, ns, os);
+	
+		List<String> ns1 = new LinkedList<String>();
+		List<Object> os1 = new  LinkedList<Object>();
+		ns1.add("ff");
+		os1.add( new Integer(3));
+		Env ext1 = global.Extend(ext, ns1, os1);
+
+	}
+	private static void testlambda(EV evmachine,Env global) throws Exception{	
+		List<String> paras = new LinkedList<String>();
+		List<IExpression> body = new LinkedList<IExpression>();
+		body.add(new SelfExpression(3));
+		LambdaExpression exp = new LambdaExpression(paras,body);
+		Object o = evmachine.eval(exp,global);
+
+	}
+	private static void testlambcomp(EV evmachine,Env global) throws Exception{
+		List<String> paras = new LinkedList<String>();
+		List<IExpression> body = new LinkedList<IExpression>();
+		body.add(new SelfExpression(3));
+		LambdaExpression exp = new LambdaExpression(paras,body);
+		//Object o = evmachine.eval(exp,global);
+		//VaribleExpression vexp = new VaribleExpression("l1");
+		//vexp.setValue(evmachine.eval(exp,global));
+		//List<IExpression> empty = new List<IExpression>();
+		CompoundExpression cexp = new CompoundExpression(exp,null);
+		Object o = evmachine.eval(cexp,global);
 	}
 
 }
