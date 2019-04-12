@@ -36,9 +36,11 @@ public class EV {
 			ILispObject proc = (ILispObject)eval(lexp,env);
 			List<IExpression> paras = ((CompoundExpression)exp).getParalist();
 			List<Object> objs = new LinkedList<Object>();
-			for(IExpression ex: paras){
-				Object o = eval(ex,env);
-				objs.add(o);
+			if(paras != null){
+				for(IExpression ex: paras){
+					Object o = eval(ex,env);
+					objs.add(o);
+				}
 			}
 			return apply(proc,objs,env);		
 		default:
@@ -95,13 +97,18 @@ public class EV {
 		return proc;
 	}
 	
-	public Object apply(ILispObject proc,List<Object> paras, Env env) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException{
+	public Object apply(ILispObject proc,List<Object> args, Env env) throws Exception{
 		log("apply");
 		if(proc instanceof PrimitiveProc){
-			return applyPrimitive((PrimitiveProc)proc,paras, env);
+			return applyPrimitive((PrimitiveProc)proc,args, env);
 		}else{
 			log("compound");
-			return null;
+			SequenceExpression cbody = ((Procedure)proc).getBody();
+			Env defenv = ((Procedure)proc).getEnv();
+			if(args.size() > 0){
+				defenv = defenv.Extend(defenv, ((Procedure)proc).getParas(), args);
+			}			
+			return eval(cbody,defenv);			
 		}
 	}
 	
