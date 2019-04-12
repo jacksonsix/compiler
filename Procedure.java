@@ -5,13 +5,13 @@ import java.util.List;
 public class Procedure implements ILispObject{
 	Env env;
 	List<String> paras;
-	List<IExpression> body;	
+	SequenceExpression body;	
 	boolean isPrim = false;
 	
 	public Procedure(Env env, List<String> paras, List<IExpression> body) {
 		this.env = env;
 		this.paras = paras;
-		this.body = body;
+		this.body = new SequenceExpression(body);
 	}
 	public Env getEnv() {
 		return env;
@@ -20,10 +20,10 @@ public class Procedure implements ILispObject{
 		this.env = env;
 	}
 
-	public List<IExpression> getBody() {
+	public SequenceExpression getBody() {
 		return body;
 	}
-	public void setBody(List<IExpression> body) {
+	public void setBody(SequenceExpression body) {
 		this.body = body;
 	}
 	public List<String> getParas() {
