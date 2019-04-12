@@ -13,6 +13,9 @@ public class Env {
 		this.tail =_global;
 	}
 	public static void initGlobal() throws Exception{
+		if(_global != null){
+			return ;
+		}
 		_global = new Frame();		
 		List<PrimitiveProc> prims = LowerBox.collectPrim();
 		for(PrimitiveProc proc : prims){
@@ -28,14 +31,16 @@ public class Env {
     private Env deepcopy() throws Exception{
     	Env env = new Env();   
     	Frame cur = this.getTail();
-    	if(cur == this.getGlobal()){
+    	if(cur.getUplink() == null){    		
     		return env;
     	}
     	Frame newcur = cur.deepcopy();
+    	newcur.setUplink(cur.getUplink());
     	env.pushTail(newcur);
     	
     	Frame next = cur.getUplink();
-    	while(next != this.getGlobal()){
+    	
+    	while(next != Env.getGlobal()){
     		Frame uframe = next.deepcopy();
     		newcur.setUplink(uframe);
     		newcur = uframe;
@@ -49,7 +54,7 @@ public class Env {
     private Frame getTail(){
     	return this.tail;
     }
-	public Env Extend(Env base, List<String> names,List<ILispObject> values) throws Exception{		
+	public Env Extend(Env base, List<String> names,List<Object> values) throws Exception{		
 		Frame frame = new Frame( names, values);
         // must a seperate copy, clone is not a choice	
 		Env basecopy = base.deepcopy();
@@ -74,13 +79,13 @@ public class Env {
 		
 	}
 	
-	public String setVarible(String key, ILispObject o){
+	public String setVarible(String key, Object o){
 		Frame tail = getTail();
 		tail.setMember(key, o);
 		return "ok";
 	}
 	
-	public String defineVarible(String key, ILispObject o){
+	public String defineVarible(String key, Object o){
 		Frame tail = getTail();	
 		tail.addMember(key, o);
 		return "ok";
@@ -91,26 +96,26 @@ public class Env {
 }
 
 class Frame{
-	List<ILispObject> values;
+	List<Object> values;
 	List<String> names;
 	Frame up;
 	public Frame () {
 	
-		this.values = new LinkedList<ILispObject>();
+		this.values = new LinkedList<Object>();
 		this.names = new LinkedList<String>();
 	}
-	public Frame (List<String> names,List<ILispObject> values) {
+	public Frame (List<String> names,List<Object> values) {
 		super();
 		this.values = values;
 		this.names = names;
 	}
 	
-	public void addMember(String name,ILispObject obj){
+	public void addMember(String name,Object obj){
 		values.add(obj);
 		names.add(name);
 	}
 	
-	public void setMember(String name,ILispObject obj){
+	public void setMember(String name,Object obj){
 		int pos = names.indexOf(name);
 		if(pos >-1){
 		   values.set(pos, obj);	
@@ -135,9 +140,13 @@ class Frame{
 		for(String s: this.names){
 			newnames.add(s);
 		}
-		List<ILispObject> newvalues = new LinkedList<ILispObject>();
-		for(ILispObject o : this.values){			
-			newvalues.add(o.deepcopy());					
+		List<Object> newvalues = new LinkedList<Object>();
+		for(Object o : this.values){		
+			if(o instanceof ILispObject){
+				newvalues.add(((ILispObject)o).deepcopy());	
+			}else{
+				newvalues.add(o);
+			}							
 		}
 		Frame n = new Frame(newnames,newvalues);
 		return n;
